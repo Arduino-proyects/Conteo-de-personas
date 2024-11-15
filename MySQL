@@ -1,0 +1,17 @@
+CREATE DATABASE sistema_estudiantes;
+USE sistema_estudiantes;
+
+CREATE TABLE estudiantes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100),
+  apellido VARCHAR(100),
+  dni VARCHAR(15),
+  uid_rfid VARCHAR(50) UNIQUE
+);
+
+CREATE TABLE ingresos_egresos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  uid_rfid VARCHAR(50),
+  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  tipo VARCHAR(10)
+);
