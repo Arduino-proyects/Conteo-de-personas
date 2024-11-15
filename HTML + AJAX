@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sistema de Ingreso y Egreso RFID</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+	<div class="container">
+    	<h1>Bienvenido al Sistema de Ingreso y Egreso RFID</h1>
+   	 
+    	<h2>Eventos recientes</h2>
+    	<table id="eventos-table">
+        	<thead>
+            	<tr>
+                	<th>Nombre</th>
+                	<th>Apellido</th>
+                	<th>DNI</th>
+                	<th>Tipo</th>
+                	<th>Fecha</th>
+            	</tr>
+        	</thead>
+        	<tbody id="eventos-body">
+            	<!-- Los eventos se cargarán aquí -->
+        	</tbody>
+    	</table>
+
+    	<h3>Registrar un evento RFID</h3>
+    	<form id="evento-form">
+        	<input type="text" id="uid" placeholder="UID del Estudiante" required>
+        	<select id="tipo">
+            	<option value="Ingreso">Ingreso</option>
+            	<option value="Egreso">Egreso</option>
+        	</select>
+        	<button type="submit">Registrar Evento</button>
+    	</form>
+
+	</div>
+
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script>
+    	$(document).ready(function() {
+        	// Función para cargar eventos en la tabla
+        	function cargarEventos() {
+            	$.get("/get_eventos", function(data) {
+                	$('#eventos-body').empty();
+                	data.forEach(function(evento) {
+                    	$('#eventos-body').append(`
+                        	<tr>
+                            	<td>${evento.nombre}</td>
+                            	<td>${evento.apellido}</td>
+                            	<td>${evento.dni}</td>
+                            	<td>${evento.tipo}</td>
+                            	<td>${evento.fecha}</td>
+                        	</tr>
+                    	`);
+                	});
+            	});
+        	}
+
+        	// Cargar los eventos cuando se carga la página
+        	cargarEventos();
+
+        	// Enviar los datos del evento cuando se escanea un RFID
+        	$('#evento-form').submit(function(event) {
+            	event.preventDefault();
+            	var uid = $('#uid').val();
+            	var tipo = $('#tipo').val();
+           	 
+            	$.ajax({
+                	url: '/rfid_eventos',
+                	method: 'POST',
+                	contentType: 'application/json',
+                	data: JSON.stringify({ uid: uid, tipo: tipo }),
+                	success: function(response) {
+                    	alert(response.message);
+                    	cargarEventos();  // Recargar los eventos después de registrar
+                	}
+            	});
+        	});
+    	});
+	</script>
+
+</body>
+</html>
