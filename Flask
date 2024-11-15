@@ -1,0 +1,95 @@
+from flask import Flask, render_template, request, jsonify
+import pymysql
+import serial
+import time
+
+app = Flask(__name__)
+
+# Conexión con la base de datos MySQL
+def connect_db():
+	return pymysql.connect(
+    	host='localhost',
+    	user='root',   	# Tu usuario MySQL
+    	password='password',  # Tu contraseña MySQL
+    	database='sistema_estudiantes'
+	)
+
+# Configuración para el puerto serial de Arduino
+ser = serial.Serial('COM3', 9600)  # Cambia el puerto al correcto según tu sistema
+time.sleep(2)  # Espera que Arduino se inicialice
+
+@app.route('/')
+def index():
+	return render_template('index.html')
+
+@app.route('/get_eventos', methods=['GET'])
+def get_eventos():
+	# Conectar a la base de datos y obtener los eventos registrados
+	connection = connect_db()
+	cursor = connection.cursor()
+	cursor.execute("SELECT e.nombre, e.apellido, e.dni, i.tipo, i.fecha FROM ingresos_egresos i JOIN estudiantes e ON i.uid_rfid = e.uid_rfid ORDER BY i.fecha DESC LIMIT 10")
+	eventos = cursor.fetchall()
+	connection.close()
+    
+	eventos_list = []
+	for evento in eventos:
+    	eventos_list.append({
+        	'nombre': evento[0],
+        	'apellido': evento[1],
+        	'dni': evento[2],
+        	'tipo': evento[3],
+        	'fecha': evento[4].strftime('%Y-%m-%d %H:%M:%S')
+    	})
+    
+	return jsonify(eventos_list)
+
+@app.route('/registrar_evento', methods=['POST'])
+def registrar_evento():
+	if request.method == 'POST':
+    	uid = request.form['uid']
+    	tipo = request.form['tipo']
+   	 
+    	# Conectar a la base de datos y registrar el evento
+    	connection = connect_db()
+    	cursor = connection.cursor()
+   	 
+    	# Buscar si el UID corresponde a un estudiante
+    	cursor.execute("SELECT nombre, apellido, dni FROM estudiantes WHERE uid_rfid = %s", (uid,))
+    	result = cursor.fetchone()
+   	 
+    	if result:
+        	# Registrar evento de ingreso o egreso
+        	cursor.execute("INSERT INTO ingresos_egresos (uid_rfid, tipo) VALUES (%s, %s)", (uid, tipo))
+        	connection.commit()
+        	connection.close()
+        	return jsonify({'status': 'success', 'message': 'Evento registrado correctamente'})
+    	else:
+        	connection.close()
+        	return jsonify({'status': 'error', 'message': 'Estudiante no encontrado'})
+
+@app.route('/rfid_eventos', methods=['POST'])
+def rfid_eventos():
+	if request.method == 'POST':
+    	uid = request.json['uid']
+    	tipo = request.json['tipo']
+   	 
+    	# Registrar el evento en la base de datos
+    	connection = connect_db()
+    	cursor = connection.cursor()
+   	 
+    	# Buscar si el UID corresponde a un estudiante
+    	cursor.execute("SELECT nombre, apellido, dni FROM estudiantes WHERE uid_rfid = %s", (uid,))
+    	result = cursor.fetchone()
+   	 
+    	if result:
+        	# Registrar evento de ingreso o egreso
+        	cursor.execute("INSERT INTO ingresos_egresos (uid_rfid, tipo) VALUES (%s, %s)", (uid, tipo))
+        	connection.commit()
+        	connection.close()
+        	return jsonify({'status': 'success', 'message': 'Evento registrado correctamente'})
+    	else:
+        	connection.close()
+        	return jsonify({'status': 'error', 'message': 'Estudiante no encontrado'})
+
+if __name__ == '__main__':
+	app.run(debug=True)
