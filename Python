@@ -1,0 +1,51 @@
+import serial
+import pymysql
+import time
+
+# Configuración de la conexión serial con Arduino
+ser = serial.Serial('COM3', 9600)  # Ajusta el puerto según corresponda
+time.sleep(2)  # Espera que Arduino se inicialice
+
+# Conexión con la base de datos MySQL
+connection = pymysql.connect(
+	host='localhost',
+	user='root',   	# Tu usuario MySQL
+	password='password',  # Tu contraseña MySQL
+	database='sistema_estudiantes'
+)
+cursor = connection.cursor()
+
+def registrar_evento(uid, tipo):
+	try:
+    	cursor.execute("SELECT nombre, apellido, dni FROM estudiantes WHERE uid_rfid=%s", (uid,))
+    	result = cursor.fetchone()
+
+    	if result:
+        	nombre, apellido, dni = result
+        	print(f"Estudiante: {nombre} {apellido} | DNI: {dni} | UID: {uid} | Evento: {tipo}")
+
+        	# Registrar evento de ingreso o egreso
+        	cursor.execute("INSERT INTO ingresos_egresos (uid_rfid, tipo) VALUES (%s, %s)", (uid, tipo))
+        	connection.commit()
+    	else:
+        	print("Estudiante no encontrado")
+	except Exception as e:
+    	print(f"Error al registrar evento: {e}")
+
+def main():
+	print("Esperando lectura de RFID...")
+	while True:
+    	if ser.in_waiting > 0:
+        	uid = ser.readline().decode('utf-8').strip().replace(" ", "").lower()  # Leer el UID
+        	print(f"UID Leído: {uid}")
+       	 
+        	# Detectar si es ingreso o egreso
+        	tipo = input("¿Ingreso o Egreso? (i/e): ").strip().lower()
+        	if tipo in ['i', 'e']:
+            	tipo_evento = "Ingreso" if tipo == 'i' else "Egreso"
+            	registrar_evento(uid, tipo_evento)
+        	else:
+            	print("Entrada inválida, por favor ingrese 'i' para ingreso o 'e' para egreso.")
+
+if __name__ == "__main__":
+	main()
